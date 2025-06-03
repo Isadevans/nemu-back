@@ -1,15 +1,13 @@
 import * as XLSX from 'xlsx'
-import { PrismaClient } from './generated/prisma'
+import { PrismaClient } from '../generated/prisma'
 
 const prisma = new PrismaClient()
 
 async function importXlsxToDb(filePath: string) {
-    // 1. Ler o arquivo
-    const workbook = XLSX.readFile("database.xlsx")
+    const workbook = XLSX.readFile(filePath)
     const sheetName = workbook.SheetNames[0]
     const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName])
 
-    // 2. Inserir no banco (ajuste o nome do modelo e campos)
     for (const row of data) {
         await prisma.sessionHistories.create({
             data: {
@@ -22,9 +20,7 @@ async function importXlsxToDb(filePath: string) {
             }
         })
     }
+    await prisma.$disconnect()
 }
 
-importXlsxToDb('caminho/para/seuarquivo.xlsx')
-    .then(() => console.log('Importação concluída'))
-    .catch(console.error)
-    .finally(() => prisma.$disconnect())
+importXlsxToDb("database.xlsx")
