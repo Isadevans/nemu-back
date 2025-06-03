@@ -5,11 +5,12 @@ import {JourneyService} from "../services/journey.service";
 import {PrismaJourneyDataAccess} from "../repositories/journey.repository";
 
 
-export async function registerRouters(app: Express, prisma: PrismaClient) {
+export function registerJourneyRoutes(app: Express, prisma: PrismaClient) {
+
+    const prismaJourneyDataAccess = new PrismaJourneyDataAccess(prisma)
+    const journeyService = new JourneyService(prismaJourneyDataAccess)
+    const journeyController = new JourneyController(journeyService)
     app.get('/journeys', async (req, res) => {
-        const prismaJourneyDataAccess = new PrismaJourneyDataAccess(prisma)
-        const journeyService = new JourneyService(prismaJourneyDataAccess)
-        const journeyController = new JourneyController(journeyService)
         await journeyController.getJourneys(req, res)
     })
 

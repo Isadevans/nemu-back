@@ -2,7 +2,6 @@ import {logger} from "../config/logger";
 import { IJourneyDataAccess } from "../repositories/journey.repository";
 import {SessionHistories} from "../../generated/prisma";
 
-// Define PaginationParams if not already defined elsewhere
 interface PaginationParams {
     page?: number;
     limit?: number;
@@ -11,8 +10,16 @@ interface PaginationParams {
 export class JourneyService {
     constructor(private journeyRepository: IJourneyDataAccess) {}
 
+    async countSessionHistoriesBySessionId(): Promise<number> {
+        try {
+            return await this.journeyRepository.countSessionHistoriesBySessionId();
+        } catch (error) {
+            logger.error("Error counting session histories:", error);
+            throw new Error("Could not count session histories");
+        }
+    }
     async getJourneysGroupedBySessionId(
-        paginationParams: PaginationParams // These params are not used by current repository method
+        paginationParams: PaginationParams
     ): Promise<SessionHistories[]> {
         try {
             return await this.journeyRepository.groupSessionHistoriesBySessionId(paginationParams);
