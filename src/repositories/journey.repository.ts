@@ -59,17 +59,6 @@ export class PrismaJourneyDataAccess implements IJourneyDataAccess {
             throw new Error('Failed to fetch session touchpoints');
         }
     }
-    private normalizeChannelForDeduplication(rawChannel: string): string {
-        if (!rawChannel) {
-            return "";
-        }
-        const lowerChannel = rawChannel.toLowerCase();
-
-        if (lowerChannel.startsWith("facebook")) {
-            return "facebook";
-        }
-        return rawChannel;
-    }
     public processJourney(touchpoints: SessionHistories[]): ProcessedTouchpoint[] {
         if (!touchpoints|| touchpoints.length === 0) {
             return [];
@@ -93,10 +82,9 @@ export class PrismaJourneyDataAccess implements IJourneyDataAccess {
 
         for (const middleTp of middleTouchpoints) {
             const originalChannel = middleTp.utm_source;
-            const normalizedChannelGroup = this.normalizeChannelForDeduplication(originalChannel);
 
-            if (!seenNormalizedMiddleChannels.has(normalizedChannelGroup)) {
-                seenNormalizedMiddleChannels.add(normalizedChannelGroup);
+            if (!seenNormalizedMiddleChannels.has(originalChannel)) {
+                seenNormalizedMiddleChannels.add(originalChannel);
                 processedJourney.push(this.mapToProcessedTouchpoint(middleTp));
             }
         }
@@ -108,7 +96,7 @@ export class PrismaJourneyDataAccess implements IJourneyDataAccess {
     private mapToProcessedTouchpoint(touchpoint: SessionHistories): ProcessedTouchpoint {
         return {
             id: touchpoint.id,
-            channel: this.normalizeChannelForDeduplication(touchpoint.utm_source),
+            channel: touchpoint.utm_source,
             campaign: touchpoint.utm_campaign,
             content: touchpoint.utm_content,
             timestamp: touchpoint.createdAt.toISOString()

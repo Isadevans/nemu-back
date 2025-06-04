@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npm run migrate && node dist/main.js",
-    "build": "tsc",
+    "start": "node dist/main.js",
+    "build": "npm run migrate && tsc",
     "dev": "tsx src/main.ts",
     "migrate": "prisma migrate dev",
     "test": "jest"
