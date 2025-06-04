@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx'
 import { PrismaClient } from '../generated/prisma'
+import * as path from 'path'; // Import the 'path' module
+
 
 const prisma = new PrismaClient()
 
@@ -23,4 +25,5 @@ async function importXlsxToDb(filePath: string) {
     await prisma.$disconnect()
 }
 
-importXlsxToDb("database.xlsx")
+const xlsxFilePath = path.join(__dirname, "database.xlsx");
+importXlsxToDb(xlsxFilePath);

@@ -6,7 +6,7 @@
     "start": "node dist/main.js",
     "build": "npm run migrate && tsc",
     "dev": "tsx src/main.ts",
-    "migrate": "prisma migrate dev",
+    "migrate": "prisma migrate deploy && tsx database_mock/migrateXLSX.ts",
     "test": "jest"
   },
   "keywords": [],
