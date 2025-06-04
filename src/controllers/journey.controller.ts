@@ -1,9 +1,14 @@
 import {Request, Response} from 'express';
 import {logger} from "../config/logger";
 import {JourneyService} from "../services/journey.service";
-import {SessionHistories} from "../../generated/prisma";
-import {PaginatedResponse} from "../models/response";
 
+export interface ProcessedTouchpoint {
+    id: number;
+    channel: string;
+    campaign: string;
+    content: string;
+    timestamp: string;
+}
 export class JourneyController {
     constructor(private journeyService: JourneyService) {
     }
@@ -19,13 +24,12 @@ export class JourneyController {
             const validatedPage = Math.max(1, page);
             const validatedLimit = Math.max(1, limit);
 
-            const journeys = await this.journeyService.getJourneysGroupedBySessionId({
+            const journeys = await this.journeyService.getJourneys({
                 page: validatedPage,
                 limit: validatedLimit
             });
-            const journeysCount = await this.journeyService.countSessionHistoriesBySessionId();
 
-            const totalItems = Number(journeysCount || 0);
+            const totalItems = await this.journeyService.getTotalSessionCount();
             const totalPages = Math.ceil(totalItems / validatedLimit);
 
             return res.status(200).json({
@@ -38,10 +42,9 @@ export class JourneyController {
                     hasNextPage: validatedPage < totalPages,
                     hasPrevPage: validatedPage > 1
                 }
-            } as PaginatedResponse<SessionHistories>); // Type assertion
+            });
         } catch (error) {
             logger.error(`Error in JourneyController: ${error instanceof Error ? error.message : String(error)}`);
             return res.status(500).send('Internal Server Error');
         }
-    }
-}
+    }}

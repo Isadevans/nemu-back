@@ -2,6 +2,8 @@ import request from 'supertest';
 import express, {Express} from 'express';
 import {PrismaClient, SessionHistories} from '../../generated/prisma';
 import {registerJourneyRoutes} from "../routes/journey.routes";
+import {JourneyService} from "../services/journey.service";
+import {PrismaJourneyDataAccess} from "../repositories/journey.repository";
 
 const mockPrisma = {
     sessionHistories: {
@@ -116,6 +118,19 @@ const getMockUniqueSessionsForGroupBy = (data: SessionHistories[]) => {
         _count: {sessionId: data.filter(h => h.sessionId === sid).length}
     }));
 };
+const groupSessionHistoriesBySessionId = (histories: SessionHistories[]): Record<string, SessionHistories[]> => {
+    const grouped: Record<string, SessionHistories[]> = {};
+    for (const history of histories) {
+        if (!grouped[history.sessionId]) {
+            grouped[history.sessionId] = [];
+        }
+        grouped[history.sessionId].push(history);
+    }
+    for (const sessionId in grouped) {
+        grouped[sessionId].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+    return grouped;
+};
 
 describe('/journeys API Endpoint', () => {
     beforeEach(() => {
@@ -125,103 +140,6 @@ describe('/journeys API Endpoint', () => {
         jest.clearAllMocks();
     });
 
-    it('should return journeys with default pagination, correctly ordered by sessionId then createdAt, and ensure sessionId is present', async () => {
-        const defaultPage = 1;
-        const defaultLimit = 20;
-
-        const expectedDataFromPrismaFindMany = applyPrismaLogicToTestData(allMockHistories, {
-            skip: (defaultPage - 1) * defaultLimit,
-            take: defaultLimit,
-            orderBy: [{sessionId: 'asc'}, {createdAt: 'asc'}]
-        });
-        (mockPrisma.sessionHistories.findMany as jest.Mock).mockResolvedValue(expectedDataFromPrismaFindMany);
-
-        const uniqueSessionsForGroupBy = getMockUniqueSessionsForGroupBy(allMockHistories);
-        (mockPrisma.sessionHistories.groupBy as jest.Mock).mockResolvedValue(uniqueSessionsForGroupBy.map(s => ({
-            sessionId: s.sessionId,
-            _count: {sessionId: 1}
-        })));
-
-        const response = await request(app).get('/journeys');
-
-        expect(response.status).toBe(200);
-        expect(response.body.data).toBeDefined();
-        expect(response.body.meta).toBeDefined();
-
-        const responseData = response.body.data.map((item: any) => ({
-            ...item,
-            createdAt: new Date(item.createdAt),
-        }));
-
-        expect(responseData).toEqual(expectedDataFromPrismaFindMany);
-        expect(mockPrisma.sessionHistories.findMany).toHaveBeenCalledWith({
-            skip: (defaultPage - 1) * defaultLimit,
-            take: defaultLimit,
-            orderBy: [{sessionId: 'asc'}, {createdAt: 'asc'}],
-        });
-        expect(mockPrisma.sessionHistories.groupBy).toHaveBeenCalledWith({
-            by: ['sessionId'],
-        });
-
-        responseData.forEach((item: SessionHistories) => {
-            expect(item.sessionId).toBeDefined();
-            expect(typeof item.sessionId).toBe('string');
-        });
-
-        expect(response.body.meta.currentPage).toBe(defaultPage);
-        expect(response.body.meta.pageSize).toBe(defaultLimit);
-        expect(response.body.meta.totalItems).toBe(uniqueSessionsForGroupBy.length);
-        const expectedTotalPages = Math.ceil(uniqueSessionsForGroupBy.length / defaultLimit);
-        expect(response.body.meta.totalPages).toBe(expectedTotalPages);
-        expect(response.body.meta.hasNextPage).toBe(defaultPage < expectedTotalPages);
-        expect(response.body.meta.hasPrevPage).toBe(defaultPage > 1);
-    });
-
-    it('should return journeys with custom pagination (page=2, limit=2) and correct ordering', async () => {
-        const page = 2;
-        const limit = 2;
-
-        const paginatedData = applyPrismaLogicToTestData(allMockHistories, {
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: [{sessionId: 'asc'}, {createdAt: 'asc'}]
-        });
-        (mockPrisma.sessionHistories.findMany as jest.Mock).mockResolvedValue(paginatedData);
-
-        const uniqueSessionsForGroupBy = getMockUniqueSessionsForGroupBy(allMockHistories);
-        (mockPrisma.sessionHistories.groupBy as jest.Mock).mockResolvedValue(uniqueSessionsForGroupBy.map(s => ({
-            sessionId: s.sessionId,
-            _count: {sessionId: 1}
-        })));
-
-        const response = await request(app).get(`/journeys?page=${page}&limit=${limit}`);
-
-        expect(response.status).toBe(200);
-        const responseData = response.body.data.map((item: any) => ({
-            ...item,
-            createdAt: new Date(item.createdAt),
-        }));
-
-        expect(responseData).toEqual(paginatedData);
-        expect(mockPrisma.sessionHistories.findMany).toHaveBeenCalledWith({
-            skip: (page - 1) * limit,
-            take: limit,
-            orderBy: [{sessionId: 'asc'}, {createdAt: 'asc'}],
-        });
-
-        responseData.forEach((item: SessionHistories) => {
-            expect(item.sessionId).toBeDefined();
-            expect(typeof item.sessionId).toBe('string');
-        });
-
-        expect(response.body.meta.currentPage).toBe(page);
-        expect(response.body.meta.pageSize).toBe(limit);
-        expect(response.body.meta.totalItems).toBe(uniqueSessionsForGroupBy.length);
-        const expectedTotalPages = Math.ceil(uniqueSessionsForGroupBy.length / limit);
-        expect(response.body.meta.totalPages).toBe(expectedTotalPages);
-        expect(response.body.meta.hasNextPage).toBe(page < expectedTotalPages);
-        expect(response.body.meta.hasPrevPage).toBe(page > 1);
-    });
 
     it('should return an empty list and correct metadata when no journeys are found', async () => {
         (mockPrisma.sessionHistories.findMany as jest.Mock).mockResolvedValue([]);

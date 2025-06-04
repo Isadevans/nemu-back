@@ -1,31 +1,47 @@
 import {logger} from "../config/logger";
-import { IJourneyDataAccess } from "../repositories/journey.repository";
-import {SessionHistories} from "../../generated/prisma";
+import {IJourneyDataAccess} from "../repositories/journey.repository";
+import {ProcessedTouchpoint} from "../controllers/journey.controller";
 
 interface PaginationParams {
     page?: number;
     limit?: number;
 }
 
-export class JourneyService {
-    constructor(private journeyRepository: IJourneyDataAccess) {}
+export interface Journey {
+    sessionId: string;
+    touchpoints: ProcessedTouchpoint[];
+}
 
-    async countSessionHistoriesBySessionId(): Promise<number> {
-        try {
-            return await this.journeyRepository.countSessionHistoriesBySessionId();
-        } catch (error) {
-            logger.error("Error counting session histories:", error);
-            throw new Error("Could not count session histories");
-        }
+export class JourneyService {
+    constructor(private journeyRepository: IJourneyDataAccess) {
     }
-    async getJourneysGroupedBySessionId(
-        paginationParams: PaginationParams
-    ): Promise<SessionHistories[]> {
+    async getJourneys(paginationParams: PaginationParams): Promise<Journey[]> {
         try {
-            return await this.journeyRepository.groupSessionHistoriesBySessionId(paginationParams);
+            const sessions = await this.journeyRepository.getPaginatedUniqueSessionIds(paginationParams);
+
+            const journeys = await Promise.all(
+                sessions.map(async (session) => {
+                    const touchpoints = await this.journeyRepository.getSessionTouchpoints(session.sessionId);
+                    return {
+                        sessionId: session.sessionId,
+                        touchpoints
+                    };
+                })
+            );
+
+            return journeys;
         } catch (error) {
             logger.error("Error fetching journeys:", error);
             throw new Error("Could not retrieve journeys");
+        }
+    }
+
+    async getTotalSessionCount(): Promise<number> {
+        try {
+            return await this.journeyRepository.getTotalSessionCount();
+        } catch (error) {
+            logger.error("Error counting sessions:", error);
+            throw new Error("Could not count total sessions");
         }
     }
 }
