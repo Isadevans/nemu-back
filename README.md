@@ -23,6 +23,6 @@ To set up the database, run the migrations, execute tests, and run the project, 
 
 4. **Run the project**:
    ```bash
-   npm start
+   npm run dev
    ```
    The application will be available at `http://localhost:3000`.

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/main.js",
+    "start": "npm run migrate && node dist/main.js",
     "build": "tsc",
     "dev": "tsx src/main.ts",
     "migrate": "prisma migrate dev",
